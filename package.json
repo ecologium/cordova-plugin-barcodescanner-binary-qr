@@ -1,16 +1,16 @@
 {
-  "name": "@red-mobile/cordova-plugin-barcodescanner",
+  "name": "cordova-plugin-barcodescanner-binary-qr",
   "version": "9.1.0",
-  "description": "You can use the BarcodeScanner plugin to scan different types of barcodes (using the device's camera) and get the metadata encoded in them for processing within your application.",
+  "description": "Cordova BarcodeScanner with binary/gzip QR support. Fork of @red-mobile/cordova-plugin-barcodescanner 9.1.0.",
   "cordova": {
-    "id": "@red-mobile/cordova-plugin-barcodescanner",
+    "id": "cordova-plugin-barcodescanner-binary-qr",
     "platforms": [
       "android"
     ]
   },
   "repository": {
     "type": "git",
-    "url": "git+"
+    "url": "git+https://github.com/ecologium/cordova-plugin-barcodescanner-binary-qr.git"
   },
   "keywords": [
     "ecosystem:cordova",
@@ -20,9 +20,9 @@
   "author": "Adobe PhoneGap Team",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/okhiroyuki/cordova-plugin-barcodescanner/issues"
+    "url": "https://github.com/ecologium/cordova-plugin-barcodescanner-binary-qr/issues"
   },
-  "homepage": "https://github.com/okhiroyuki/cordova-plugin-barcodescanner#readme",
+  "homepage": "https://github.com/ecologium/cordova-plugin-barcodescanner-binary-qr#readme",
   "scripts": {
     "test": "npx jasmine"
   },

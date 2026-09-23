@@ -1,93 +1,100 @@
-# Cordova Plugin BarcodeScanner
-================================
+# cordova-plugin-barcodescanner-binary-qr
 
-Cross-platform BarcodeScanner for Cordova.
+Cordova BarcodeScanner with **binary/gzip QR** support.
+
+This is an [Ecologium](https://github.com/ecologium) fork of [`@red-mobile/cordova-plugin-barcodescanner`](https://www.npmjs.com/package/@red-mobile/cordova-plugin-barcodescanner) 9.1.0 ([okhiroyuki/cordova-plugin-barcodescanner](https://github.com/okhiroyuki/cordova-plugin-barcodescanner)). Gzip/binary QR decoding is ported from [ecologium/phonegap-plugin-barcodescanner](https://github.com/ecologium/phonegap-plugin-barcodescanner) (`73c340d4`).
+
+The JS API is unchanged: `cordova.plugins.barcodeScanner`. `@ionic-native/barcode-scanner` keeps working.
+
+## Binary / gzip QR
+
+On a successful Android scan the plugin reads ZXing `SCAN_RESULT_BYTES`, unpacks the nibble-padded payload, and gunzips it (`GZIPInputStream`).
+
+- If unzip succeeds, `result.text` is the decompressed UTF-8 string (Testo/Sauermann binary QR).
+- If there are no raw bytes, or unzip fails, `result.text` is the normal `SCAN_RESULT` string (plain QR/barcodes).
+
+This path is Android-only. iOS leftover code (`CDVBarcodeScanner.mm`) uses AVFoundation `stringValue` and cannot decode binary QR.
 
 ## Installation
 
-This requires Cordova@10 and more
-
-    cordova plugin add @red-mobile/cordova-plugin-barcodescanner
-
-Optional variables:
-This plugin requires the AndroidX legacy support library v4. Default value is `1.0.0`.  Check out the latest version [here](https://developer.android.com/jetpack/androidx/versions).
+Requires Cordova 10+ and cordova-android 9+.
 
 ```
-% cordova plugin add @red-mobile/cordova-plugin-barcodescanner --variable ANDROIDX_LEGACY_SUPPORT_V4_VERSION="1.0.0"
+cordova plugin add https://github.com/ecologium/cordova-plugin-barcodescanner-binary-qr.git
+```
+
+Optional variable: AndroidX legacy support library v4. Default is `1.0.0`. See [AndroidX versions](https://developer.android.com/jetpack/androidx/versions).
+
+```
+cordova plugin add https://github.com/ecologium/cordova-plugin-barcodescanner-binary-qr.git --variable ANDROIDX_LEGACY_SUPPORT_V4_VERSION="1.0.0"
 ```
 
 ### Uninstall
 
 ```
-% cordova plugin remove cordova-plugin-barcodescanner && npm uninstall @red-mobile/cordova-plugin-barcodescanner
+cordova plugin remove cordova-plugin-barcodescanner-binary-qr
 ```
 
 ### Supported Platforms
 
 - Android
 
-Note: the Android source for this project includes an Android Library Project.
-plugman currently doesn't support Library Project refs, so its been
-prebuilt as a jar library. Any updates to the Library Project should be
-committed with an updated jar.
+The Android scan UI ships as a prebuilt AAR (`barcodescanner-release-2.1.7.aar`). Plugman does not support library-project refs; update that AAR if you change the library project.
 
-## Using the plugin ##
-The plugin creates the object `cordova.plugins.barcodeScanner` with the method `scan(success, fail)`.
+## Using the plugin
 
-The following barcode types are currently supported:
+The plugin creates `cordova.plugins.barcodeScanner` with `scan(success, fail)`.
 
-|  Barcode Type | Android | iOS | Windows  |
-|---------------|:-------:|:---:|:--------:|
-| QR_CODE       |    ✔    |  ✔  |     ✔    |
-| DATA_MATRIX   |    ✔    |  ✔  |     ✔    |
-| UPC_A         |    ✔    |  ✔  |     ✔    |
-| UPC_E         |    ✔    |  ✔  |     ✔    |
-| EAN_8         |    ✔    |  ✔  |     ✔    |
-| EAN_13        |    ✔    |  ✔  |     ✔    |
-| CODE_39       |    ✔    |  ✔  |     ✔    |
-| CODE_93       |    ✔    |  ✔  |     ✔    |
-| CODE_128      |    ✔    |  ✔  |     ✔    |
-| CODABAR       |    ✔    |  ✖  |     ✔    |
-| ITF           |    ✔    |  ✔  |     ✔    |
-| RSS14         |    ✔    |  ✖  |     ✔    |
-| PDF_417       |    ✔    |  ✔  |     ✔    |
-| RSS_EXPANDED  |    ✔    |  ✖  |     ✖    |
-| MSI           |    ✖    |  ✖  |     ✔    |
-| AZTEC         |    ✔    |  ✔  |     ✔    |
+| Barcode Type | Android |
+|--------------|:-------:|
+| QR_CODE      |    ✔    |
+| DATA_MATRIX  |    ✔    |
+| UPC_A        |    ✔    |
+| UPC_E        |    ✔    |
+| EAN_8        |    ✔    |
+| EAN_13       |    ✔    |
+| CODE_39      |    ✔    |
+| CODE_93      |    ✔    |
+| CODE_128     |    ✔    |
+| CODABAR      |    ✔    |
+| ITF          |    ✔    |
+| RSS14        |    ✔    |
+| PDF_417      |    ✔    |
+| RSS_EXPANDED |    ✔    |
+| MSI          |    ✖    |
+| AZTEC        |    ✔    |
 
-`success` and `fail` are callback functions. Success is passed an object with data, type and cancelled properties. Data is the text representation of the barcode data, type is the type of barcode detected and cancelled is whether or not the user cancelled the scan.
+`success` receives `{ text, format, cancelled }`. `text` is the barcode string, or the gunzipped payload for binary QR.
 
-A full example could be:
 ```js
-   cordova.plugins.barcodeScanner.scan(
-      function (result) {
-          alert("We got a barcode\n" +
-                "Result: " + result.text + "\n" +
-                "Format: " + result.format + "\n" +
-                "Cancelled: " + result.cancelled);
-      },
-      function (error) {
-          alert("Scanning failed: " + error);
-      },
-      {
-          preferFrontCamera : true, // iOS and Android
-          showFlipCameraButton : true, // iOS and Android
-          showTorchButton : true, // iOS and Android
-          torchOn: true, // Android, launch with the torch switched on (if available)
-          saveHistory: true, // Android, save scan history (default false)
-          prompt : "Place a barcode inside the scan area", // Android
-          resultDisplayDuration: 500, // Android, display scanned text for X ms. 0 suppresses it entirely, default 1500
-          formats : "QR_CODE,PDF_417", // default: all but PDF_417 and RSS_EXPANDED
-          orientation : "landscape", // Android only (portrait|landscape), default unset so it rotates with the device
-          disableAnimations : true, // iOS
-          disableSuccessBeep: false // iOS and Android
-      }
-   );
+cordova.plugins.barcodeScanner.scan(
+  function (result) {
+    alert("We got a barcode\n" +
+          "Result: " + result.text + "\n" +
+          "Format: " + result.format + "\n" +
+          "Cancelled: " + result.cancelled);
+  },
+  function (error) {
+    alert("Scanning failed: " + error);
+  },
+  {
+    preferFrontCamera: true,
+    showFlipCameraButton: true,
+    showTorchButton: true,
+    torchOn: true,
+    saveHistory: true,
+    prompt: "Place a barcode inside the scan area",
+    resultDisplayDuration: 500,
+    formats: "QR_CODE,PDF_417",
+    orientation: "landscape",
+    disableSuccessBeep: false
+  }
+);
 ```
 
-## Encoding a Barcode ##
+## Encoding a Barcode
 
-The plugin creates the object `cordova.plugins.barcodeScanner` with the method `encode(type, data, success, fail)`.
+`cordova.plugins.barcodeScanner.encode(type, data, success, fail)`.
 
 Supported encoding types:
 
@@ -96,18 +103,21 @@ Supported encoding types:
 * PHONE_TYPE
 * SMS_TYPE
 
+```js
+cordova.plugins.barcodeScanner.encode(
+  cordova.plugins.barcodeScanner.Encode.TEXT_TYPE,
+  "http://www.nytimes.com",
+  function (success) {
+    alert("encode success: " + success);
+  },
+  function (fail) {
+    alert("encoding failed: " + fail);
+  }
+);
 ```
-A full example could be:
 
-   cordova.plugins.barcodeScanner.encode(cordova.plugins.barcodeScanner.Encode.TEXT_TYPE, "http://www.nytimes.com", function(success) {
-            alert("encode success: " + success);
-          }, function(fail) {
-            alert("encoding failed: " + fail);
-          }
-        );
-```
+## Lineage
 
-## Thanks on Github ##
-
-So many -- check out the original [iOS](https://github.com/phonegap/phonegap-plugins/tree/DEPRECATED/iOS/BarcodeScanner),  [Android](https://github.com/phonegap/phonegap-plugins/tree/DEPRECATED/Android/BarcodeScanner) and
-[BlackBerry 10](https://github.com/blackberry/WebWorks-Community-APIs/tree/master/BB10-Cordova/BarcodeScanner) repos.
+- [@red-mobile/cordova-plugin-barcodescanner](https://www.npmjs.com/package/@red-mobile/cordova-plugin-barcodescanner) 9.1.0 — Gradle/AndroidX base
+- [phonegap-plugin-barcodescanner](https://github.com/phonegap/phonegap-plugin-barcodescanner) — original Cordova plugin
+- [ecologium/phonegap-plugin-barcodescanner@73c340d4](https://github.com/ecologium/phonegap-plugin-barcodescanner) — gzip/binary QR Java

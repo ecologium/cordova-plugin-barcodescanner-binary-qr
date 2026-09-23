@@ -28,6 +28,13 @@ import com.google.zxing.client.android.CaptureActivity;
 import com.google.zxing.client.android.encode.EncodeActivity;
 import com.google.zxing.client.android.Intents;
 
+import java.util.zip.GZIPInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+import java.util.Arrays;
+
 /**
  * This calls out to the ZXing barcode reader and returns the result.
  *
@@ -220,8 +227,43 @@ public class BarcodeScanner extends CordovaPlugin {
             if (resultCode == Activity.RESULT_OK) {
                 JSONObject obj = new JSONObject();
                 try {
-                    obj.put(TEXT, intent.getStringExtra("SCAN_RESULT"));
                     obj.put(FORMAT, intent.getStringExtra("SCAN_RESULT_FORMAT"));
+
+                    // Gzip/binary QR from phonegap-plugin-barcodescanner@73c340d4
+                    byte[] rawBytes = intent.getByteArrayExtra("SCAN_RESULT_BYTES");
+
+                    if (rawBytes != null && rawBytes.length > 3) {
+                        // Create a new array that is 2 bytes shorter
+                        byte[] actualData = new byte[rawBytes.length - 2];
+                        // Remove padding: Strip first 2 and a half bytes of the front of the bytes array
+                        for (int i = 2; i < rawBytes.length - 1; i++) {
+                            // Take lower 4 bits of current byte and upper 4 bits of next byte
+                            actualData[i - 2] = (byte) (((rawBytes[i] & 0x0F) << 4) | ((rawBytes[i + 1] & 0xF0) >> 4));
+                        }
+                        // Trim to remove padding at the end
+                        int endIndex = actualData.length;
+                        for (int i = actualData.length - 1; i > 0; i--) {
+                            if (actualData[i] != (byte)0xC1 || actualData[i-1] != (byte)0x1E) {
+                                endIndex = i + 1;
+                                break;
+                            }
+                        }
+                        // Copy the array
+                        byte[] finalData = Arrays.copyOfRange(actualData, 0, endIndex);
+                        // Unzip the bytes
+                        String rawBytesString = unzipBytes(finalData);
+                        Log.d(LOG_TAG, "Unzipped bytes: " + rawBytesString);
+                        if (rawBytesString != null && !rawBytesString.equals("Unzip error")) {
+                            obj.put(TEXT, rawBytesString);
+                        } else {
+                            Log.d(LOG_TAG, "Unzip error, using raw bytes");
+                            obj.put(TEXT, intent.getStringExtra("SCAN_RESULT"));
+                        }
+                    } else {
+                        Log.d(LOG_TAG, "Unzip: No raw bytes, using raw string");
+                        obj.put(TEXT, intent.getStringExtra("SCAN_RESULT"));
+                    }
+
                     obj.put(CANCELLED, false);
                 } catch (JSONException e) {
                     Log.d(LOG_TAG, "This should never happen");
@@ -244,6 +286,51 @@ public class BarcodeScanner extends CordovaPlugin {
                 this.callbackContext.error("Unexpected error");
             }
         }
+    }
+
+    /**
+     * Array of characters to convert to hex values on
+     */
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
+    /**
+     * Converts a byte array to a hex string.
+     */
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
+
+    /**
+     * Unzip the bytes returned by the intent and convert them to a string.
+     * Ported unchanged from phonegap-plugin-barcodescanner@73c340d4.
+     */
+    public static String unzipBytes(byte[] byteArray) {
+        if (byteArray == null ) {
+            return null;
+        }
+
+        Log.d(LOG_TAG, "unzipBytes byteArray hex: " + bytesToHex(byteArray));
+
+        try{
+            GZIPInputStream gzis = new GZIPInputStream(new ByteArrayInputStream(byteArray));
+            BufferedReader bfr = new BufferedReader(new InputStreamReader(gzis, "UTF-8"));
+            String outputString = "";
+            String line;
+            while ((line=bfr.readLine())!=null) {
+                outputString += line;
+            }
+            return outputString;
+        } catch(Exception ex) {
+            Log.d(LOG_TAG, "Unzip error: " + ex.getMessage());
+            return "Unzip error";
+        }
+
     }
 
     /**
